@@ -58,7 +58,7 @@ async def ec2status(interaction: discord.Interaction):
         region_name=config["region"]
         )
 
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
         instances = get_ec2_instance_states(ec2)
 
         if not instances:
@@ -66,9 +66,11 @@ async def ec2status(interaction: discord.Interaction):
             #await interaction.followup.send("🔍 실행 중인 EC2 인스턴스가 없습니다.")
         else:
             msg = "\n".join([f"🖥️ {i} → `{s}`" for i, s in instances])
-        await interaction.followup.send(msg)
+        await interaction.followup.send(f"{msg}",
+            ephemeral=True)
 
     except Exception as e:
-        await interaction.followup.send(f"❌ 오류 발생: {e}")
+        await interaction.followup.send(f"❌ 오류 발생: {e}",
+            ephemeral=True)
 
 bot.run(TOKEN)
