@@ -8,11 +8,14 @@ import boto3
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
+from forex_python.converter import CurrencyRates
 
 from aws_handler import get_ec2_instance_states
 from setup import setup
 from utils.memory_config import retrieve_config
 from utils.crypto import decrypt
+from utils.aws_client_factory import get_boto3_client
+from datetime import date
 
 env_path = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
@@ -125,5 +128,69 @@ async def status(interaction: discord.Interaction):
 
     except Exception as e:
         await interaction.followup.send(f"❌ 오류 발생: {e}")
+
+@bot.tree.command(name="bill", description="전체 비용 청구 상태 조회")
+async def bill(interaction: discord.Interaction):
+    guild_id = interaction.guild.id
+    config = retrieve_config(guild_id)
+
+    if not config or not config.get("access_key"):
+        await interaction.response.send_message("❌ 먼저 /setup 명령으로 키를 등록해주세요.", ephemeral=True)
+        return
+    
+    region = config.get("region", "us-east-1") #기본값 박아둔 곳 여기
+
+    supported_regions = ["us-east-1"]
+    if region not in supported_regions:
+        await interaction.response.send_message(
+            f"❌ 현재 선택된 리전 `{region}`은 Cost Explorer를 지원하지 않습니다.\n"
+            f"`us-east-1` 리전에서만 비용 조회가 가능합니다.",
+            ephemeral=True
+        )
+        return
+    
+    try:
+        await interaction.response.defer(ephemeral=True)
+
+        ce = get_boto3_client(guild_id, "ce", override_region="us-east-1")
+        today = date.today()
+        start = today.replace(day=1).isoformat()
+        end = today.isoformat()
+
+        response = ce.get_cost_and_usage(
+            TimePeriod={"Start": start, "End": end},
+            Granularity="MONTHLY",
+            Metrics=["UnblendedCost"]
+        )
+
+        amount = response["ResultsByTime"][0]["Total"]["UnblendedCost"]["Amount"]
+        currency = response["ResultsByTime"][0]["Total"]["UnblendedCost"]["Unit"]
+
+        c = CurrencyRates()
+        rate = c.get_rate('USD', 'KRW')
+        msg = f"💰 이번 달 누적 청구 금액 : \n`{float(amount):,.2f} {currency}`"
+
+        # 오직 달러.
+        rateUsd = ""
+        if currency == "USD":
+            try:
+                c = CurrencyRates()
+                rate = c.get_rate('USD', 'KRW')
+                krw = float(amount)*rate
+                rateUsd = f"\n한화 : `{krw:.0f}원` \n환율 :`(1 USD ≈ {rate:,.2f} KRW)`"
+            except Exception as ex:
+                rateUsd = f"\n[ERROR] 환율 정보를 불러올 수 없습니다 \n {ex}"
+
+        msg = (
+            f"💰 {today} 💰\n"
+            f"## 청구 금액 :"
+            f"`{float(amount):,.2f}{currency}`"
+            f"{rateUsd}"
+        )
+
+        await interaction.followup.send(msg)
+
+    except Exception as e:
+        await interaction.followup.send(f"[ERROR] : {e}")
 
 bot.run(TOKEN)

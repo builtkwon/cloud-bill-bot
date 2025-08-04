@@ -1,10 +1,11 @@
 import discord
+import boto3
 from discord import app_commands
 from discord.ui import Modal, TextInput, View, Select
-from utils.crypto import encrypt
-from utils.memory_config import store_config
+from utils.crypto import encrypt, decrypt
+from utils.memory_config import store_config, retrieve_config
 from region_view import SetupView
-import boto3
+from datetime import date
 
 class AWSKeyModal(Modal, title="AWS 키 입력"):
     access_key = TextInput(label="Access Key", placeholder="enter your key", required=True)
@@ -49,6 +50,7 @@ class AWSKeyModal(Modal, title="AWS 키 입력"):
             view=SetupView(guild_id),
             ephemeral=True
         )
+
 
 @app_commands.command(name="setup", description="AWS 키와 리전을 설정합니다.")
 async def setup(interaction: discord.Interaction):

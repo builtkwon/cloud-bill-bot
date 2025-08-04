@@ -2,3 +2,4 @@ boto3
 discord.py
 python-dotenv
 cryptography>=42.0.0
+forex-python
