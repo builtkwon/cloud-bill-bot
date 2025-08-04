@@ -73,14 +73,28 @@ async def on_guild_join(guild):
 #         await interaction.followup.send(f"❌ 오류 발생: {e}",
 #             ephemeral=True)
 
-# 동작 확인해야함
+# 아직 확인 안함
 @bot.tree.command(name="account", description="현재 사용중인 AWS 계정 ID")
 async def account(interaction:discord.Interaction):
+    guild_id = interaction.guild.id
+    config = retrieve_config(guild_id)
+    
+    if not config or not config.get("access_key"):
+        await interaction.response.send_message("❌ 먼저 /setup 명령으로 AWS 키를 등록해주세요.", ephemeral=True)
+        return
+    
     try:
-        account_id = boto3.client('sts').get_caller_identity().get('Account')
-        now_acc = (f"> 현재 연결된 계정 : {account_id}")
-    except Exception:
-        now_acc = "❌ 현재 연결된 AWS 계정이 없습니다."
+        session = boto3.Session(
+            aws_access_key_id=decrypt(config["access_key"]),
+            aws_secret_access_key=decrypt(config["secret_key"]),
+            #region_name=config.get("region", "us-east-1")
+        )
+        sts = session.client("sts")
+        account_id = sts.get_caller_identify().get("Account")
+        now_acc = f"✅ 현재 연결된 AWS 계정 ID: `{account_id}`"
+    except Exception as e:
+        now_acc = f"❌ AWS 계정 조회 실패: {e}"
+    
     await interaction.response.send_message(now_acc, ephemeral=True)
 
 @bot.tree.command(name="status", description="전체 리소스 상태 조회")
@@ -117,47 +131,40 @@ async def status(interaction: discord.Interaction):
                 if ec2_instances else "0개"
             )
         except Exception as e:
-            ec2_summary = f" EC2 오류    : {e}"
+            ec2_summary = f"[ERROR] {e}"
 
         try: 
             s3_buckets = s3.list_buckets().get("Buckets", [])
-            s3_summary = f" S3 버킷      : {len(s3_buckets)}개"
+            s3_summary = f"{len(s3_buckets)}개"
         except Exception as e:
-            s3_summary = f" S3 오류      : {e}"
+            s3_summary = f"[ERROR] {e}"
 
         try:
             rds_instances = rds.describe_db_instances().get("DBInstances",[])
             rds_summary = (
-                f" RDS 인스턴스 : {len(rds_instances)}개"
-                if rds_instances else " RDS 인스턴스 : 0개"
+                f"{len(rds_instances)}개"
+                if rds_instances else "0개"
             )
         except Exception as e:
-            rds_summary = f" RDS 오류     : {e}"
+            rds_summary = f"[ERROR] {e}"
 
         try:
             iam_users = iam.list_users().get("Users",[])
-            iam_summary = f" IAM 사용자   : {len(iam_users)}명"
+            iam_summary = f"{len(iam_users)}명"
         except Exception as e:
-            iam_summary = f" IAM 오류     : {e}"
+            iam_summary = f"[ERROR] {e}"
 
         msg = "\n".join([
-            " **AWS 리소스 요약**",
-            ec2_summary,
-            s3_summary,
-            rds_summary,
-            iam_summary
+            "### 📊 AWS 리소스 요약",
+            "```",
+            "리소스 | 상태",
+            "------|-------",
+            f"EC2   | {ec2_summary}",
+            f"S3    | {s3_summary}",
+            f"RDS   | {rds_summary}",
+            f"IAM   | {iam_summary}",
+            "```"
         ])
-        # msg - "\n",join({
-        #     "### 📊 AWS 리소스 요약",
-        #     "```",
-        #     "리소스 | 상태",
-        #     "------|-------",
-        #     "EC2   | {ec2_summary}",
-        #     "S3",
-        #     "RDS",
-        #     "IAM",
-        #     "```"
-        # })
 
         await interaction.followup.send(msg)
 

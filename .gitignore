@@ -212,3 +212,4 @@ Thumbs.db
 # key
 key.json
 encryption_key.key
+/config/
