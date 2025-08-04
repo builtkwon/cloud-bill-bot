@@ -4,10 +4,11 @@ from discord.ui import Modal, TextInput, View, Select
 from utils.crypto import encrypt
 from utils.memory_config import store_config
 from region_view import SetupView
+import boto3
 
 class AWSKeyModal(Modal, title="AWS 키 입력"):
-    access_key = TextInput(label="Access Key", placeholder="AKIA...", required=True)
-    secret_key = TextInput(label="Secret Key", placeholder="********", required=True, style=discord.TextStyle.paragraph)
+    access_key = TextInput(label="Access Key", placeholder="enter your key", required=True)
+    secret_key = TextInput(label="Secret Key", placeholder="enter your secret key", required=True, style=discord.TextStyle.paragraph)
 
     def __init__(self, interaction: discord.Interaction):
         super().__init__()
@@ -19,10 +20,28 @@ class AWSKeyModal(Modal, title="AWS 키 입력"):
         access = self.access_key.value.strip()
         secret = self.secret_key.value.strip()
 
+        try:
+            session = boto3.Session(
+                aws_access_key_id=access,
+                aws_secret_access_key=secret
+            )
+            sts = session.client("sts")
+            identity = sts.get_caller_identity()
+            account_id = identity["Account"]
+            arn = identity["Arn"]
+            user_name = arn.split("/")[-1] if ":user/" in arn else ""
+        except Exception as e:
+            await interaction.response.send_message(
+                f"❌ AWS 계정 인증 실패: {e}", ephemeral=True
+            )
+            return
+
         store_config(guild_id, {
             "access_key": encrypt(access),
             "secret_key": encrypt(secret),
-            "region": None
+            "region": None,
+            "account_id": account_id,
+            "user_name": user_name
         })
 
         await interaction.response.send_message(

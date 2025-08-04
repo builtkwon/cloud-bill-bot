@@ -34,68 +34,23 @@ async def on_guild_join(guild):
     await bot.tree.sync(guild=guild)
     print(f"🆕 신규 서버: {guild.name} 동기화 완료")
 
-# @bot.tree.command(name="ec2status", description="EC2 상태 조회")
-# async def ec2status(interaction: discord.Interaction):
-#     guild_id = interaction.guild.id
-#     config = retrieve_config(guild_id)
-
-#     if not config or not config.get("access_key"):
-#         await interaction.response.send_message("❌ 먼저 /setup 명령으로 키를 등록해주세요.", ephemeral=True)
-#         return
-    
-#     #region 키 로그
-#     # print("[DEBUG] 암호문 access_key:", config["access_key"])
-#     # print("[DEBUG] 복호화된 access_key:", decrypt(config["access_key"]))
-#     # print("[DEBUG] 복호화된 secret_key:", decrypt(config["secret_key"]))
-#     # print("[DEBUG] region:", config["region"])
-#     #endregion 키 로그
-
-#     try:
-#         ec2 = boto3.client(
-#         "ec2",
-#         aws_access_key_id=decrypt(config["access_key"]),
-#         aws_secret_access_key=decrypt(config["secret_key"]),
-#         region_name=config["region"]
-#         )
-
-#         await interaction.response.defer(ephemeral=True)
-#         instances = get_ec2_instance_states(ec2)
-
-#         if not instances:
-#             msg = "🔍 실행 중인 EC2 인스턴스가 없습니다."
-#             #await interaction.followup.send("🔍 실행 중인 EC2 인스턴스가 없습니다.")
-#         else:
-#             msg = "\n".join([f"🖥️ {i} → `{s}`" for i, s in instances])
-#         await interaction.followup.send(f"{msg}",
-#             ephemeral=True)
-
-#     except Exception as e:
-#         await interaction.followup.send(f"❌ 오류 발생: {e}",
-#             ephemeral=True)
-
-# 아직 확인 안함
-@bot.tree.command(name="account", description="현재 사용중인 AWS 계정 ID")
+@bot.tree.command(name="account", description="현재 사용중인 AWS 계정 ID 조회")
 async def account(interaction:discord.Interaction):
     guild_id = interaction.guild.id
     config = retrieve_config(guild_id)
     
-    if not config or not config.get("access_key"):
-        await interaction.response.send_message("❌ 먼저 /setup 명령으로 AWS 키를 등록해주세요.", ephemeral=True)
+    account_id = config.get("account_id")
+    user_name = config.get("user_name","")
+
+    if not account_id:
+        await interaction.response.send_message("❌ 아직 AWS 계정이 등록되지 않았습니다. `/setup`을 진행해 주세요.",ephemeral=True)
         return
     
-    try:
-        session = boto3.Session(
-            aws_access_key_id=decrypt(config["access_key"]),
-            aws_secret_access_key=decrypt(config["secret_key"]),
-            #region_name=config.get("region", "us-east-1")
-        )
-        sts = session.client("sts")
-        account_id = sts.get_caller_identify().get("Account")
-        now_acc = f"✅ 현재 연결된 AWS 계정 ID: `{account_id}`"
-    except Exception as e:
-        now_acc = f"❌ AWS 계정 조회 실패: {e}"
-    
-    await interaction.response.send_message(now_acc, ephemeral=True)
+    msg_lines = [f"✅ 현재 등록된 AWS 계정 ID : `{account_id}`"]
+    if user_name:
+        msg_lines.append(f"✅ IAM 사용자 이름 : `{user_name}`")
+        
+    await interaction.response.send_message("\n".join(msg_lines), ephemeral=True)
 
 @bot.tree.command(name="status", description="전체 리소스 상태 조회")
 async def status(interaction: discord.Interaction):
