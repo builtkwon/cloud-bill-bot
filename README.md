@@ -60,15 +60,16 @@ cloud-bill-bot/
 
 ## 🚧 향후 확장 계획
 
-- [ ] /ec2start, /ec2stop 명령어 추가
-- [ ] IAM Role 기반 인증 전환
-- [ ] CloudWatch 알림 연동
-- [ ] Slack / Email 등 외부 채널 알림 연동
 - [x] EC2 외 S3, RDS, Billing 등 자원 감시 확장
+- [ ] 나만보기/전체공개 설정 추가
+- [ ] /ec2start, /ec2stop 명령어 추가
+- [ ] amazone 생성형 도우미 검토
+- [ ] CloudWatch 알림 연동 (일정 금액 초과시 자동 채널 알림 연동)
+- [ ] 비용 분포도 표시 기능 검토
 
 ---
 
 ## ⚠️ 주의사항
 
 - `.env`, `encryption_key.key`, `config/` 내 JSON 파일은 Git에 커밋하지 마세요
-- 봇은 Discord 서버별로 EC2 정보를 분리하여 관리합니다
+- 봇은 Discord 서버별로, 유저별로 정보를 분리하여 관리합니다

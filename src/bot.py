@@ -6,16 +6,18 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 import os
 import boto3
 import discord
+import asyncio
+import FinanceDataReader as fdr
 from discord.ext import commands
 from dotenv import load_dotenv
-from forex_python.converter import CurrencyRates
+from datetime import date
 
 from aws_handler import get_ec2_instance_states
 from setup import setup
 from utils.memory_config import retrieve_config
 from utils.crypto import decrypt
 from utils.aws_client_factory import get_boto3_client
-from datetime import date
+from region_view import RegionSelectView
 
 env_path = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
@@ -166,24 +168,20 @@ async def bill(interaction: discord.Interaction):
         amount = response["ResultsByTime"][0]["Total"]["UnblendedCost"]["Amount"]
         currency = response["ResultsByTime"][0]["Total"]["UnblendedCost"]["Unit"]
 
-        c = CurrencyRates()
-        rate = c.get_rate('USD', 'KRW')
         msg = f"💰 이번 달 누적 청구 금액 : \n`{float(amount):,.2f} {currency}`"
 
-        # 오직 달러.
         rateUsd = ""
         if currency == "USD":
             try:
-                c = CurrencyRates()
-                rate = c.get_rate('USD', 'KRW')
+                rate = fdr.DataReader('USD/KRW').iloc[-1].iloc[0]
                 krw = float(amount)*rate
-                rateUsd = f"\n한화 : `{krw:.0f}원` \n환율 :`(1 USD ≈ {rate:,.2f} KRW)`"
+                rateUsd = f"\n 한화 : `{krw:.0f}원` \n환율 :`(1 USD ≈ {rate:,.2f} KRW)`"
             except Exception as ex:
-                rateUsd = f"\n[ERROR] 환율 정보를 불러올 수 없습니다 \n {ex}"
+                rateUsd = f"\n [ERROR] 환율 정보를 불러올 수 없습니다 \n {ex}"
 
         msg = (
-            f"💰 {today} 💰\n"
-            f"## 청구 금액 :"
+            f"💰\n"
+            f"청구 금액 : "
             f"`{float(amount):,.2f}{currency}`"
             f"{rateUsd}"
         )
@@ -193,4 +191,17 @@ async def bill(interaction: discord.Interaction):
     except Exception as e:
         await interaction.followup.send(f"[ERROR] : {e}")
 
+@bot.tree.command(name="region", description="현재 설정된 리전 조회 및 업데이트")
+async def region(interaction: discord.Interaction):
+    guild_id = interaction.guild.id
+    config = retrieve_config(guild_id)
+    current_region = config.get("region", "us-east-1")
+
+    await interaction.response.send_message(
+                f"📍 현재 리전 : `{current_region}` \n"
+                f"⚠️`us-east-1` 리전에서만 비용 조회가 가능합니다.\n\n"
+                f"아래 드롭다운에서 변경할 수 있습니다.\n",
+                view=RegionSelectView(guild_id),
+                ephemeral=True
+    )
 bot.run(TOKEN)
