@@ -17,6 +17,7 @@ from setup import setup
 from utils.memory_config import retrieve_config
 from utils.crypto import decrypt
 from utils.aws_client_factory import get_boto3_client
+from utils.user_config import get_ephemeral, set_ephemeral
 from region_view import RegionSelectView
 
 env_path = Path(__file__).resolve().parent.parent / ".env"
@@ -41,6 +42,7 @@ async def on_guild_join(guild):
 
 @bot.tree.command(name="account", description="현재 사용중인 AWS 계정 ID 조회")
 async def account(interaction:discord.Interaction):
+    ephemeral = get_ephemeral(interaction.user.id)
     guild_id = interaction.guild.id
     config = retrieve_config(guild_id)
     
@@ -48,26 +50,27 @@ async def account(interaction:discord.Interaction):
     user_name = config.get("user_name","")
 
     if not account_id:
-        await interaction.response.send_message("❌ 아직 AWS 계정이 등록되지 않았습니다. `/setup`을 진행해 주세요.",ephemeral=True)
+        await interaction.response.send_message("❌ 아직 AWS 계정이 등록되지 않았습니다. `/setup`을 진행해 주세요.",ephemeral=ephemeral)
         return
     
     msg_lines = [f"✅ 현재 등록된 AWS 계정 ID : `{account_id}`"]
     if user_name:
         msg_lines.append(f"✅ IAM 사용자 이름 : `{user_name}`")
         
-    await interaction.response.send_message("\n".join(msg_lines), ephemeral=True)
+    await interaction.response.send_message("\n".join(msg_lines), ephemeral=ephemeral)
 
 @bot.tree.command(name="status", description="전체 리소스 상태 조회")
 async def status(interaction: discord.Interaction):
+    ephemeral = get_ephemeral(interaction.user.id)
     guild_id = interaction.guild.id
     config = retrieve_config(guild_id)
 
     if not config or not config.get("access_key"):
-        await interaction.response.send_message("❌ 먼저 /setup 명령으로 키를 등록해주세요.", ephemeral=True)
+        await interaction.response.send_message("❌ 먼저 /setup 명령으로 키를 등록해주세요.", ephemeral=ephemeral)
         return
     
     try:
-        await interaction.response.defer(ephemeral=True)
+        await interaction.response.defer(ephemeral=ephemeral)
 
         access_key = decrypt(config["access_key"])
         secret_key = decrypt(config["secret_key"])
@@ -133,11 +136,12 @@ async def status(interaction: discord.Interaction):
 
 @bot.tree.command(name="bill", description="전체 비용 청구 상태 조회")
 async def bill(interaction: discord.Interaction):
+    ephemeral = get_ephemeral(interaction.user.id)
     guild_id = interaction.guild.id
     config = retrieve_config(guild_id)
 
     if not config or not config.get("access_key"):
-        await interaction.response.send_message("❌ 먼저 /setup 명령으로 키를 등록해주세요.", ephemeral=True)
+        await interaction.response.send_message("❌ 먼저 /setup 명령으로 키를 등록해주세요.", ephemeral=ephemeral)
         return
     
     region = config.get("region", "us-east-1") #기본값 박아둔 곳 여기
@@ -147,12 +151,12 @@ async def bill(interaction: discord.Interaction):
         await interaction.response.send_message(
             f"❌ 현재 선택된 리전 `{region}`은 Cost Explorer를 지원하지 않습니다.\n"
             f"`us-east-1` 리전에서만 비용 조회가 가능합니다.",
-            ephemeral=True
+            ephemeral=ephemeral
         )
         return
     
     try:
-        await interaction.response.defer(ephemeral=True)
+        await interaction.response.defer(ephemeral=ephemeral)
 
         ce = get_boto3_client(guild_id, "ce", override_region="us-east-1")
         today = date.today()
@@ -193,6 +197,7 @@ async def bill(interaction: discord.Interaction):
 
 @bot.tree.command(name="region", description="현재 설정된 리전 조회 및 업데이트")
 async def region(interaction: discord.Interaction):
+    ephemeral = get_ephemeral(interaction.user.id)
     guild_id = interaction.guild.id
     config = retrieve_config(guild_id)
     current_region = config.get("region", "us-east-1")
@@ -202,6 +207,25 @@ async def region(interaction: discord.Interaction):
                 f"⚠️`us-east-1` 리전에서만 비용 조회가 가능합니다.\n\n"
                 f"아래 드롭다운에서 변경할 수 있습니다.\n",
                 view=RegionSelectView(guild_id),
-                ephemeral=True
+                ephemeral=ephemeral
     )
+
+@bot.tree.command(name="public", description="명령어 응답을 서버에 공유")
+async def set_public(interaction: discord.Interaction):
+    set_ephemeral(interaction.user.id, False)
+    await interaction.response.send_message(
+        "✅ 이후 모든 응답은 **전체공개**로 표시됩니다.",
+        ephemeral=True
+    )
+
+@bot.tree.command(name="private", description="명령어 응답을 나만 보기")
+async def set_private(interaction: discord.Interaction):
+    set_ephemeral(interaction.user.id, True)
+    await interaction.response.send_message(
+        "✅ 이후 모든 응답은 **나만보기**로 표시됩니다.",
+        ephemeral=True
+    )
+
+
+
 bot.run(TOKEN)
