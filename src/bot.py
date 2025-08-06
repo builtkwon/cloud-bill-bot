@@ -14,11 +14,15 @@ from datetime import date
 
 from aws_handler import get_ec2_instance_states
 from setup import setup
+from region_view import RegionSelectView
 from utils.memory_config import retrieve_config
 from utils.crypto import decrypt
 from utils.aws_client_factory import get_boto3_client
 from utils.user_config import get_ephemeral, set_ephemeral
-from region_view import RegionSelectView
+from resources.ec2 import get_ec2_status
+from resources.s3 import get_s3_status
+from resources.rds import get_rds_status
+from resources.iam import get_iam_status
 
 env_path = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
@@ -87,35 +91,10 @@ async def status(interaction: discord.Interaction):
         rds = session.client("rds")
         iam = session.client("iam")
         
-        try :
-            ec2_instances = get_ec2_instance_states(ec2)
-            ec2_summary = (
-                f"{len(ec2_instances)}개"
-                if ec2_instances else "0개"
-            )
-        except Exception as e:
-            ec2_summary = f"[ERROR] {e}"
-
-        try: 
-            s3_buckets = s3.list_buckets().get("Buckets", [])
-            s3_summary = f"{len(s3_buckets)}개"
-        except Exception as e:
-            s3_summary = f"[ERROR] {e}"
-
-        try:
-            rds_instances = rds.describe_db_instances().get("DBInstances",[])
-            rds_summary = (
-                f"{len(rds_instances)}개"
-                if rds_instances else "0개"
-            )
-        except Exception as e:
-            rds_summary = f"[ERROR] {e}"
-
-        try:
-            iam_users = iam.list_users().get("Users",[])
-            iam_summary = f"{len(iam_users)}명"
-        except Exception as e:
-            iam_summary = f"[ERROR] {e}"
+        ec2_summary = get_ec2_status(ec2)
+        s3_summary = get_s3_status(s3)
+        rds_summary = get_rds_status(rds)
+        iam_summary = get_iam_status(iam)
 
         msg = "\n".join([
             "### 📊 AWS 리소스 요약",
@@ -225,7 +204,5 @@ async def set_private(interaction: discord.Interaction):
         "✅ 이후 모든 응답은 **나만보기**로 표시됩니다.",
         ephemeral=True
     )
-
-
 
 bot.run(TOKEN)
