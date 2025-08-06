@@ -1,5 +1,4 @@
 from botocore.exceptions import ClientError
-from aws_handler import get_ec2_instance_states
 
 def get_ec2_status(client):
     try:
@@ -30,3 +29,23 @@ def start_instance(client, instance_id: str):
         return f"❌ 중지 실패: {e.response['Error']['Message']}"
     except Exception as e:
         return f"❌ 예외 발생: {str(e)}"
+
+def get_ec2_instance_states(client) -> list:
+    instances = []
+
+    try:
+        response = client.describe_instances()
+        for reservation in response.get("Reservations", []):
+            for instance in reservation.get("Instances", []):
+                instances.append({
+                    "InstanceId": instance["InstanceId"],
+                    "State": instance["State"]["Name"],
+                    "Type": instance["InstanceType"],
+                    "Name": next(
+                        (tag["Value"] for tag in instance.get("Tags", []) if tag["Key"] == "Name"),
+                        "Unnamed"
+                    )
+                })
+        return instances
+    except Exception as e:
+        return [{"InstanceId": "ERROR", "State": str(e), "Type": "-", "Name": "-"}]

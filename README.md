@@ -25,6 +25,12 @@ Slack은 무겁고, 브라우저는 번거롭고, 디스코드가 열려 있길�
 
 ---
 
+## 🧱 아키텍처
+
+- 본 프로젝트는 `MVC + Command Handler 패턴`을 기반으로 명확한 역할 분리를 통해 유지보수성과 확장성을 높였습니다.
+
+---
+
 ## 🛠️ 사용 기술
 
 | 구분         | 내용                      |
@@ -41,23 +47,40 @@ Slack은 무겁고, 브라우저는 번거롭고, 디스코드가 열려 있길�
 
 ```bash
 cloud-bill-bot/
-├── src/
-│   ├── bot.py                   # 디스코드 봇 메인 진입점
-│   ├── aws_handler.py           # EC2 상태 조회 함수
-│   ├── setup.py                 # 키 입력 모달
-│   ├── region_view.py           # 리전 선택 드롭다운
-├── utils/
-│   ├── crypto.py                # 암호화/복호화 유틸리티
-│   └── memory_config.py         # 서버별 구성 저장/조회
-│   └── aws_client_factory.py    # 세션 정보 조회 및 리턴
-├── config/                      # 서버별 키 저장 JSON
-│   └── aws_keys_<guild_id>.json
-├── encryption_key.key           # 암호화 키 (자동 생성)
-├── .env                         # 환경 변수 (DISCORD_TOKEN)
-├── .gitignore
-├── README.md
-└── requirements.txt
-```
+├── bot.py                       ← 엔트리 포인트 (봇 초기화, 명령어 등록)
+├── app/
+│   ├── commands/                ← 명령어 핸들러
+│   │   ├── setup_handler.py
+│   │   ├── region_handler.py
+│   │   ├── status_handler.py
+│   │   ├── bill_handler.py
+│   │   └── ...
+│   ├── services/                ← 실제 도메인 로직
+│   │   ├── setup_service.py
+│   │   ├── region_service.py
+│   │   ├── status_service.py
+│   │   ├── bill_service.py
+│   │   └── ec2_service.py
+├── interface/
+│   ├── views/                   ← Modal, View, Select 등 UI 요소
+│   │   ├── setup_view.py
+│   │   └── region_view.py
+│   ├── setup_command.py
+│   ├── region_command.py
+│   ├── status_command.py
+│   ├── bill_command.py
+│   └── ...
+├── infra/
+│   ├── aws_client_factory.py
+│   ├── memory_config.py
+│   ├── crypto.py
+│   └── user_config.py
+├── config/                      ← Guild/유저별 키 저장소
+├── encryption_key.key
+├── .env
+├── requirements.txt
+└── README.md
+
 
 ---
 
