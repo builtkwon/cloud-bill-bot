@@ -88,7 +88,7 @@ cloud-bill-bot/
 
 - [x] EC2 외 S3, RDS, Billing 등 자원 감시 확장
 - [x] 나만보기/전체공개 설정 추가
-- [ ] /ec2start, /ec2stop 명령어 추가
+- [x] /ec2start, /ec2stop 명령어 추가
 - [ ] 생성형 QnA 도우미 추가
 - [ ] CloudWatch 알림 연동 (일정 금액 초과시 자동 채널 알림 연동)
 - [ ] 비용 분포도 표시 기능 검토

@@ -19,12 +19,21 @@ def get_ec2_instances_with_names(client):
                 result.append((instance_id, name, state))
     except Exception as e:
         result = [("[ERROR]",str(e),"")]
-    return
+    return result
 
 def start_instance(client, instance_id: str):
     try:
         response = client.start_instances(InstanceIds=[instance_id])
         return f"✅ 인스턴스 시작 요청됨: `{instance_id}`"
+    except ClientError as e:
+        return f"❌ 중지 실패: {e.response['Error']['Message']}"
+    except Exception as e:
+        return f"❌ 예외 발생: {str(e)}"
+
+def stop_instance(client, instance_id: str):
+    try:
+        response = client.stop_instances(InstanceIds=[instance_id])
+        return f"🛑 인스턴스 중지 요청됨: `{instance_id}`"
     except ClientError as e:
         return f"❌ 중지 실패: {e.response['Error']['Message']}"
     except Exception as e:

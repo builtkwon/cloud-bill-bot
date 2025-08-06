@@ -24,4 +24,7 @@ def validate_and_store_aws_keys(guild_id: int, access: str, secret: str) -> tupl
         "user_name": user_name
     })
 
-    return True, "✅ 키 저장 완료! 리전을 선택해주세요.", account_id
+    return True, (
+    "✅ 키 저장 완료! 리전을 선택해주세요.\n\n"
+    "⚠️ **권한 안내 : /permissions 입력**"
+), account_id

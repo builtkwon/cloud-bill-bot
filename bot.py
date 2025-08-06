@@ -11,6 +11,8 @@ from interface.account_command import account_command
 from interface.status_command import status_command
 from interface.bill_command import bill_command
 from interface.visibility_command import public_command, private_command
+from interface.ec2_control_command import ec2control_command
+from interface.text_command import permissions_command, about_command, contact_command
 
 env_path = Path(__file__).resolve().parent / ".env"
 load_dotenv(dotenv_path=env_path)
@@ -28,6 +30,10 @@ async def on_ready():
     bot.tree.add_command(bill_command)
     bot.tree.add_command(public_command)
     bot.tree.add_command(private_command)
+    bot.tree.add_command(ec2control_command)
+    bot.tree.add_command(permissions_command)
+    bot.tree.add_command(about_command)
+    bot.tree.add_command(contact_command)
 
     synced = await bot.tree.sync()
     print(f"✅ 봇 로그인: {bot.user}")
